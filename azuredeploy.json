@@ -263,7 +263,7 @@
               "typeHandlerVersion": "2.19",
               "autoUpgradeMinorVersion": true,
               "settings": {
-                "modulesUrl": "https://github.com/jwendl/arm-vm-unity/raw/master/deployment/InstallPackages.zip",
+                "modulesUrl": "https://github.com/jwendl/arm-vm-unity/raw/master/InstallPackages.ps1.zip",
                 "configurationFunction": "InstallPackages.ps1\\Main",
                 "properties": {
                   "AzdoUrl": "[parameters('azdoUrl')]",

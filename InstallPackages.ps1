@@ -7,16 +7,7 @@ Configuration Main
         [String[]]$UnityComponents
     )
 
-    Install-Module -Name UnitySetup -AllowPrerelease
-    Import-DscResource -ModuleName UnitySetup
-
     Node 'localhost' {
-        xUnitySetupInstance Unity {
-            Versions   = '$UnityVersion'
-            Components = $UnityComponents
-            Ensure     = 'Present'
-        }
-
 		GetScript = {
             @{
                 Result = ""
@@ -28,8 +19,10 @@ Configuration Main
         }
 
         SetScript = {
-            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            Install-Module UnitySetup -AllowPrerelease
+            Find-UnitySetupInstaller -Version '$UnityVersion'  -Components $UnityComponents | Install-UnitySetupInstance
 
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
             $WebClient = New-Object System.Net.WebClient
             $WebClient.DownloadFile("https://vstsagentpackage.azureedge.net/agent/2.164.7/vsts-agent-win-x64-2.164.7.zip", "c:\agent\vsts-agent.zip")
             [System.IO.Compression.ZipFile]::ExtractToDirectory("c:\agent\vsts-agent.zip", "c:\agent\vsts-agent")
