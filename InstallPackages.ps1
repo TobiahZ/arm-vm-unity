@@ -7,6 +7,7 @@ Configuration Main
         [String[]]$UnityComponents
     )
 
+    Install-Module -Name UnitySetup -AllowPrerelease
     Import-DscResource -ModuleName UnitySetup
 
     Node 'localhost' {
