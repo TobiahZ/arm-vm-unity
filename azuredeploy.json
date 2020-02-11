@@ -1,0 +1,281 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "vmName": {
+        "type": "string",
+        "metadata": {
+          "description": "This is the name of the Virtual Machine"
+        }
+      },
+      "vmSize": {
+        "type": "string",
+        "defaultValue": "Standard_A0",
+        "metadata": {
+          "description": "This is the size of the Virtual Machine"
+        }
+      },
+      "imagePublisher": {
+        "type": "string",
+        "defaultValue": "MicrosoftWindowsServer",
+        "metadata": {
+          "description": "Image Publisher"
+        }
+      },
+      "imageOffer": {
+        "type": "string",
+        "defaultValue": "WindowsServer",
+        "metadata": {
+          "description": "Image Offer"
+        }
+      },
+      "imageSKU": {
+        "type": "string",
+        "defaultValue": "2012-R2-Datacenter",
+        "metadata": {
+          "description": "Image SKU"
+        }
+      },
+      "adminUsername": {
+        "type": "string",
+        "metadata": {
+          "description": "This is the Virtual Machine administrator login name"
+        }
+      },
+      "adminPassword": {
+        "type": "securestring",
+        "metadata": {
+          "description": "This is the Virtual Machine administrator login password"
+        }
+      },
+      "dnsName": {
+        "type": "string",
+        "metadata": {
+          "description": "This is the DNS name of the Virtual Machine"
+        }
+      },
+      "configurationFunction": {
+        "type": "string",
+        "metadata": {
+          "description": "This is the link to the Web Deploy package to be deployed to the Virtual Machine. It is a github URL in this example."
+        }
+      },
+      "unityVersion": {
+        "type": "string",
+        "metadata": {
+          "description": "The unity version to run for example: 2019.2.20f1 ."
+        }
+      },
+      "unityComponents": {
+        "type": "array",
+        "metadata": {
+          "description": "The list of components like Windows, UWP ."
+        }
+      },
+      "azdoUrl": {
+        "type": "string",
+        "metadata": {
+          "description": "The url to your azdo organization."
+        }
+      },
+      "azdoToken": {
+        "type": "string",
+        "metadata": {
+          "description": "The PAT for azdo."
+        }
+      }
+    },
+    "variables": {
+      "virtualNetworkName": "[concat(parameters('vmName'), '-VNET')]",
+      "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
+      "nicName": "[concat(parameters('vmName'),'-NIC')]",
+      "addressPrefix": "10.0.0.0/16",
+      "subnet1Name": "Subnet-1",
+      "subnet2Name": "Subnet-2",
+      "subnet1Prefix": "10.0.0.0/24",
+      "subnet2Prefix": "10.0.1.0/24",
+      "subnet1Ref": "[concat(variables('vnetID'),'/subnets/',variables('subnet1Name'))]",
+      "publicIPAddressName": "[concat(parameters('vmName'), '-PublicIP-VM')]",
+      "storageAccountType": "Standard_LRS",
+      "networkSecurityGroupName": "default-NSG"
+    },
+    "resources": [
+      {
+        "apiVersion": "2015-05-01-preview",
+        "type": "Microsoft.Network/publicIPAddresses",
+        "name": "[variables('publicIPAddressName')]",
+        "location": "[resourceGroup().location]",
+        "tags": {
+          "displayName": "PublicIPAddress"
+        },
+        "properties": {
+          "publicIPAllocationMethod": "Dynamic",
+          "dnsSettings": {
+            "domainNameLabel": "[parameters('dnsName')]"
+          }
+        }
+      },
+      {
+        "comments": "Default Network Security Group for template",
+        "type": "Microsoft.Network/networkSecurityGroups",
+        "apiVersion": "2019-08-01",
+        "name": "[variables('networkSecurityGroupName')]",
+        "location": "[resourceGroup().location]",
+        "properties": {
+          "securityRules": [
+            {
+              "name": "default-allow-3389",
+              "properties": {
+                "priority": 1001,
+                "access": "Allow",
+                "direction": "Inbound",
+                "destinationPortRange": "3389",
+                "protocol": "Tcp",
+                "sourceAddressPrefix": "*",
+                "sourcePortRange": "*",
+                "destinationAddressPrefix": "*"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "2015-05-01-preview",
+        "type": "Microsoft.Network/virtualNetworks",
+        "name": "[variables('virtualNetworkName')]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+          "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+        ],
+        "tags": {
+          "displayName": "VirtualNetwork"
+        },
+        "properties": {
+          "addressSpace": {
+            "addressPrefixes": [
+              "[variables('addressPrefix')]"
+            ]
+          },
+          "subnets": [
+            {
+              "name": "[variables('subnet1Name')]",
+              "properties": {
+                "addressPrefix": "[variables('subnet1Prefix')]",
+                "networkSecurityGroup": {
+                  "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+                }
+              }
+            },
+            {
+              "name": "[variables('subnet2Name')]",
+              "properties": {
+                "addressPrefix": "[variables('subnet2Prefix')]"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "2015-05-01-preview",
+        "type": "Microsoft.Network/networkInterfaces",
+        "name": "[variables('nicName')]",
+        "location": "[resourceGroup().location]",
+        "tags": {
+          "displayName": "NetworkInterface"
+        },
+        "dependsOn": [
+          "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
+          "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+        ],
+        "properties": {
+          "ipConfigurations": [
+            {
+              "name": "ipconfig1",
+              "properties": {
+                "privateIPAllocationMethod": "Dynamic",
+                "publicIPAddress": {
+                  "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+                },
+                "subnet": {
+                  "id": "[variables('subnet1Ref')]"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "2017-03-30",
+        "type": "Microsoft.Compute/virtualMachines",
+        "name": "[parameters('vmName')]",
+        "location": "[resourceGroup().location]",
+        "tags": {
+          "displayName": "VirtualMachine"
+        },
+        "dependsOn": [
+          "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
+        ],
+        "properties": {
+          "hardwareProfile": {
+            "vmSize": "[parameters('vmSize')]"
+          },
+          "osProfile": {
+            "computerName": "[parameters('vmName')]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "adminPassword": "[parameters('adminPassword')]"
+          },
+          "storageProfile": {
+            "imageReference": {
+              "publisher": "[parameters('imagePublisher')]",
+              "offer": "[parameters('imageOffer')]",
+              "sku": "[parameters('imageSKU')]",
+              "version": "latest"
+            },
+            "osDisk": {
+              "name": "[concat(parameters('vmName'),'_OSDisk')]",
+              "caching": "ReadWrite",
+              "createOption": "FromImage"
+            }
+          },
+          "networkProfile": {
+            "networkInterfaces": [
+              {
+                "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"
+              }
+            ]
+          }
+        },
+        "resources": [
+          {
+            "name": "InstallPackagesExtension",
+            "type": "extensions",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "2015-05-01-preview",
+            "dependsOn": [
+              "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]"
+            ],
+            "tags": {
+              "displayName": "InstallPackagesExtension"
+            },
+            "properties": {
+              "publisher": "Microsoft.Powershell",
+              "type": "DSC",
+              "typeHandlerVersion": "2.19",
+              "autoUpgradeMinorVersion": true,
+              "settings": {
+                "modulesUrl": "https://github.com/jwendl/arm-vm-unity/raw/master/InstallPackages.ps1.zip",
+                "configurationFunction": "InstallPackages.ps1\\Main",
+                "properties": {
+                  "AzdoUrl": "[parameters('azdoUrl')]",
+                  "AzdoToken": "[parameters('azdoToken')]",
+                  "UnityVersion": "[parameters('unityVersion')]",
+                  "UnityComponents": "[parameters('unityComponents')]"
+                }
+              },
+              "protectedSettings": {}
+            }
+          }
+        ]
+      }
+    ]
+  }
