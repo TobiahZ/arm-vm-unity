@@ -20,7 +20,7 @@ Configuration Main
             }
     
             SetScript = {
-                Install-Module UnitySetup -AllowPrerelease
+                Install-Module UnitySetup
                 Find-UnitySetupInstaller -Version '$UnityVersion'  -Components $UnityComponents | Install-UnitySetupInstance
     
                 Add-Type -AssemblyName System.IO.Compression.FileSystem
